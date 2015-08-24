@@ -25,6 +25,8 @@ class CommandHelper(object):
     def __init__(self, namespace_set=[], dest_mapping={}):
         self.namespace_set = namespace_set
         self.dest_mapping = dest_mapping
+        self.dest_mapping_inverse = dict(
+            (self.dest_mapping[k], k) for k in self.dest_mapping)
 
         # Create a db to db mapping from the namespace mapping.
         db_pairs = set((ns.split('.')[0],
@@ -75,3 +77,8 @@ class CommandHelper(object):
             return tuple(ns.split('.', 1))
         else:
             return None, None
+
+    def revert_namespace(self, namespace):
+        full_type = self.dest_mapping_inverse[namespace].split(".", 1)
+        return full_type[0], full_type[1]
+
