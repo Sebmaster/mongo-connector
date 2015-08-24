@@ -20,6 +20,9 @@ from mongo_connector.errors import UpdateDoesNotApply
 class DocManagerBase(object):
     """Base class for all DocManager implementations."""
 
+    def __init__(self):
+        self._mongo = None
+
     def apply_update(self, doc, update_spec):
         """Apply an update operation to a document."""
 

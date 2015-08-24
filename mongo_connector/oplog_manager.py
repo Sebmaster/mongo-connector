@@ -91,6 +91,9 @@ class OplogThread(threading.Thread):
             err_msg = 'OplogThread: No oplog for thread:'
             LOG.warning('%s %s' % (err_msg, self.primary_connection))
 
+        for dm in self.doc_managers:
+            dm._mongo = self.primary_client
+
     @property
     def fields(self):
         return self._fields
