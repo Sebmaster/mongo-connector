@@ -18,6 +18,7 @@ Receives documents from an OplogThread and takes the appropriate actions on
 Elasticsearch.
 """
 import base64
+import imp
 import json
 import logging
 
@@ -67,6 +68,12 @@ class DocManager(DocManagerBase):
             self.run_auto_commit()
         self._formatter = DefaultDocumentFormatter()
         self.routing = kwargs.get('routing', {})
+
+        self.modules = {}
+        for key in self.routing:
+            f = self.routing[key]['script']
+            if f is not None:
+                self.modules[key] = imp.load_source(f, f)
 
         self.has_attachment_mapping = False
         self.attachment_field = attachment_field
@@ -161,6 +168,10 @@ class DocManager(DocManagerBase):
     def upsert(self, doc, namespace, timestamp):
         """Insert a document into Elasticsearch."""
         index, doc_type = self._index_and_mapping(namespace)
+
+        if doc_type in self.modules and not self.modules[doc_type].handle(doc):
+            return
+
         # No need to duplicate '_id' in source document
         doc_id = u(doc.pop("_id"))
         metadata = {
@@ -196,6 +207,9 @@ class DocManager(DocManagerBase):
             for doc in docs:
                 # Remove metadata and redundant _id
                 index, doc_type = self._index_and_mapping(namespace)
+                if doc_type in self.modules and not self.modules[doc_type].handle(doc):
+                    continue
+
                 doc_id = u(doc.pop("_id"))
                 document_action = {
                     "_index": index,
@@ -269,6 +283,9 @@ class DocManager(DocManagerBase):
 
         doc = self._formatter.format_document(doc)
         doc[self.attachment_field] = base64.b64encode(f.read()).decode()
+
+        if doc_type in self.modules and not self.modules[doc_type].handle(doc):
+            return
 
         parent = self.get_parent(doc_type, doc)
         if parent is None:
